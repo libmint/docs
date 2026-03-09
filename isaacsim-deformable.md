@@ -1,6 +1,6 @@
 ---
 layout: default
-title: [IsaacSIm] deformable 천 만들
+title: IsaacSIm deformable 천 만들
 parent: 나의 공부 게시판
 ---
 
