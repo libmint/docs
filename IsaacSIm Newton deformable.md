@@ -93,6 +93,8 @@ $ISAACSIM_PATH/python.sh test_cable.py
 
 이제 이 코드를 실행하면 화면에 **공중에 떠 있다가 중력에 의해 휘어지는 케이블**이 보일 것입니다. 이 단계가 성공하면 그다음으로 블로그에 나온 **로봇(MuJoCo)과의 결합** 단계로 넘어가시면 됩니다.
 
+-------
+
 Isaac Sim 5.1 Standalone 환경에서 **Franka 로봇(MuJoCo)**과 **케이블(VBD)**이 상호작용할 수 있도록 블로그의 파편화된 코드를 하나로 합친 완성형 스크립트입니다.
 
 이 코드는 **"로봇의 움직임 → 프록시 객체 동기화 → 케이블 물리 계산 → 반작용력 전달"**이라는 6단계 커플링 로직을 모두 포함하고 있습니다.
@@ -255,5 +257,61 @@ while viewer.is_active():
     ```
 4.  **결과:** 화면에 Franka 로봇 팔의 실루엣(프록시)과 그 옆에 떠 있는 케이블이 나타납니다. 로봇이 움직이도록 설정하면(예: 관절 값 입력) 로봇 팔이 케이블을 칠 때 케이블이 반응하는 것을 볼 수 있습니다.
 
-### 다음 단계
-현재는 로봇이 가만히 있습니다. 만약 **로봇 팔이 특정 궤적으로 움직이게 하거나**, **손가락으로 케이블을 집어 올리는 동작**을 추가하고 싶으시다면 관절 제어 코드를 덧붙여 드릴 수 있습니다. 어떻게 진행해 볼까요?
+-------
+
+`ModuleNotFoundError: No module named 'pxr'` 에러는 파이썬이 **Pixar USD(Universal Scene Description)** 라이브러리를 찾지 못해서 발생합니다.
+
+Isaac Sim 5.1 Standalone 버전에서 `pxr` 모듈은 이미 포함되어 있지만, 시스템 기본 파이썬 환경이 아닌 Isaac Sim 전용 디렉토리 안에 숨어 있습니다. 이 문제를 해결하는 방법은 두 가지입니다.
+
+---
+
+### 방법 1: 반드시 `./python.sh`로 실행 (가장 확실함)
+
+Standalone 폴더 안에 있는 `python.sh`는 실행 시 `pxr`을 포함한 모든 필요한 라이브러리 경로(`PYTHONPATH`)를 자동으로 잡아줍니다. 만약 일반 `python`이나 `python3` 명령어를 쓰셨다면 이 에러가 무조건 발생합니다.
+
+**터미널에서 다음과 같이 실행하세요:**
+```bash
+# Isaac Sim Standalone 폴더로 이동
+cd $ISAACSIM_PATH
+
+# 반드시 ./python.sh를 사용하여 스크립트 실행
+./python.sh /path/to/your/newton_franka_cable.py
+```
+
+### 방법 2: `ISAACSIM_PATH`가 제대로 잡혀 있는지 확인
+
+만약 `./python.sh`를 썼는데도 에러가 난다면, 스크립트 실행 시점에 환경 변수가 유실되었을 가능성이 있습니다. 터미널에 아래 명령어를 쳐서 경로가 출력되는지 확인하세요.
+
+```bash
+echo $ISAACSIM_PATH
+```
+아무것도 나오지 않는다면, 다시 한번 경로를 지정해줘야 합니다.
+`export ISAACSIM_PATH=/당신의/standalone/폴더/경로`
+
+---
+
+### 방법 3: 코드 상단에서 경로 강제 주입 (임시 방편)
+
+만약 어떤 이유로든 `python.sh`가 경로를 못 잡는다면, 파이썬 코드 맨 윗부분(`import warp` 위쪽)에 아래 내용을 추가하여 USD 라이브러리 위치를 직접 알려줄 수 있습니다.
+
+```python
+import os
+import sys
+
+# Isaac Sim Standalone 내의 USD 라이브러리 경로 추가
+isaac_path = os.environ.get("ISAACSIM_PATH")
+if isaac_path:
+    # 5.1 버전의 전형적인 USD 라이브러리 경로
+    usd_path = os.path.join(isaac_path, "exts/omni.usd.libs/bin/python")
+    if usd_path not in sys.path:
+        sys.path.append(usd_path)
+else:
+    print("경고: ISAACSIM_PATH 환경 변수가 설정되지 않았습니다.")
+
+import pxr  # 이제 에러 없이 임포트되어야 합니다.
+```
+
+---
+
+### 💡 왜 이런 일이 생기나요?
+`pxr`은 NVIDIA Omniverse와 Isaac Sim의 뼈대와 같은 라이브러리입니다. 하지만 표준 파이썬 라이브러리가 아니기 때문에, Isaac Sim이라는 특수한 환경 밖에서는 파이썬이 이 모듈의 존재를 알 수 없습니다. 그래서 반드시 **Isaac Sim이 제공하는 파이썬 실행기(`python.sh`)**를 통하거나, 경로를 수동으로 연결해줘야 합니다.
