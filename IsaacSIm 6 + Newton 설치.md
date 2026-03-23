@@ -11,6 +11,7 @@ GTC 2026 발표 내용과 Newton deformable 관련 최신 정보를 찾아볼게
 ## Isaac Sim 5.1 vs 6.0 + Newton 비교
 
 ### 핵심 차이 한눈에 보기---
+![Screenshot_20260323_133020_Chrome](https://github.com/user-attachments/assets/953b490a-122e-4025-883b-96d8112e2df3)
 
 ## 결론: Newton Deformable 실험이 목적이라면 반드시 Isaac Sim 6.0
 
