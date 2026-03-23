@@ -4,83 +4,87 @@ title: IsaacSIm 6 설치
 parent: 나의 공부 게시판
 ---
 
-네, 맞습니다. 지적하신 **`https://github.com/newton-physics/newton.git`** 저장소가 GTC 2026에서 발표된 **Newton 1.0 GA(정식 출시) 버전의 공식 소스 코드**가 위치한 곳입니다.
+GTC 2026 발표 내용과 Newton deformable 관련 최신 정보를 찾아볼게요.최신 GTC 2026 정보를 바탕으로 핵심 차이점과 Newton deformable 사용법을 정리했습니다.
 
-GTC 2026(2026년 3월 16일\~19일)을 기점으로 해당 저장소의 `main` 브랜치는 정식 버전인 1.0 GA 코드로 업데이트되었습니다. 이제 더 이상의 시행착오 없이 **Ubuntu 환경에서 한 번에 성공하는 2026년형 설치 가이드**를 다시 완벽하게 정리해 드립니다.
+---
 
------
+## Isaac Sim 5.1 vs 6.0 + Newton 비교
 
-## \#\# Newton 1.0 GA & Isaac Sim 6.0 무결점 설치 절차 (2026)
+### 핵심 차이 한눈에 보기---
 
-이 절차는 `python3-venv` 누락 문제부터 Newton 소스 빌드까지 모든 예외 상황을 고려한 최적의 경로입니다.
+## 결론: Newton Deformable 실험이 목적이라면 반드시 Isaac Sim 6.0
 
-### 1\. 시스템 필수 패키지 설치 (가장 중요)
+**Isaac Sim 5.1의 deformable**은 PhysX 백엔드 전용으로만 동작하며, Newton 백엔드에서 deformable objects, surface gripper, material randomization은 지원되지 않습니다. 즉, 5.1에서 Newton deformable은 아직 불완전합니다.
 
-가상환경(`venv`) 명령어가 작동하지 않는 문제를 해결하기 위해 시스템 패키지를 먼저 업데이트하고 필수 모듈을 설치합니다.
+반면 GTC 2026에서 발표된 Newton 1.0 GA는 VBD(Vertex Block Descent) 솔버로 선형 변형체(케이블), 얇은 변형체(천), 부피 변형체(고무 부품)를 처리하며, iMPM(implicit Material Point Method)으로 모래 등 입자 시뮬레이션도 지원합니다. VBD와 MPM 솔버는 MuJoCo Warp와 명시적으로 결합되어, 로봇이 변형체를 조작하는 시나리오를 지원합니다.
 
-```bash
-# 시스템 업데이트 및 필수 패키지 설치
-sudo apt update && sudo apt upgrade -y
-sudo apt install git python3.12 python3.12-venv python3.12-dev build-essential -y
-```
+---
 
-### 2\. 가상환경 구축 및 활성화
+## Isaac Sim 6.0 + Newton 1.0 설치 (Ubuntu, 소스 빌드)
 
-반드시 3.12 버전을 지정하여 가상환경을 생성합니다.
+### 1단계 — Isaac Sim 6.0 소스 클론
 
 ```bash
-# 가상환경 생성 (경로: ~/isaac-sim-6)
-python3.12 -m venv ~/isaac-sim-6
-
-# 가상환경 활성화
-source ~/isaac-sim-6/bin/activate
-
-# pip 최신화 (가상환경 내에서 수행)
-pip install --upgrade pip setuptools wheel
+git clone https://github.com/isaac-sim/IsaacSim.git -b develop
+cd IsaacSim
+# README의 빌드 지침 참고 (cmake 기반)
 ```
 
-### 3\. Newton 1.0 GA 설치 (소스 빌드 방식)
-
-질문하신 GitHub 저장소를 클론하고, 1.0 GA의 모든 기능(Kamino, VBD 등)을 사용할 수 있도록 설치합니다.
+### 2단계 — Isaac Lab 3.0 Early Access 설치
 
 ```bash
-# 저장소 클론 및 이동
-git clone https://github.com/newton-physics/newton.git
-cd newton
+git clone -b develop https://github.com/isaac-sim/IsaacLab.git
+cd IsaacLab
+./isaaclab.sh --install
 
-# 1.0 GA 정식 버전 확인 및 설치
-# (GA 출시 이후 main 브랜치가 1.0입니다)
-pip install -e ".[examples]" 
+# Newton 전용 확장 설치
+pip install newton mujoco-warp
 ```
 
-### 4\. Isaac Sim 6.0 설치 (Pip 기반)
+### 3단계 — Newton Deformable 코드 예시
 
-Isaac Sim 6.0은 현재 **Early Developer Release** 상태입니다. 아래 명령어로 설치하되, 만약 특정 리눅스 환경에서 오류가 날 경우 NVIDIA Developer Portal에서 제공하는 최신 `.run` 파일이나 Docker를 병행해야 할 수 있습니다.
-
-```bash
-# Isaac Sim 6.0 코어 패키지 설치
-pip install "isaacsim[all]==6.0.0" --extra-index-url https://pypi.nvidia.com
-```
-
------
-
-## \#\# 설치 완료 후 최종 점검 (One-Shot Check)
-
-모든 설치가 끝났다면 아래 명령어를 한 줄씩 복사해서 터미널에 넣어보세요. 에러 없이 정보가 출력되면 성공입니다.
+아래는 MuJoCo rigid-body 로봇과 VBD 케이블 deformable을 두 개의 독립적인 "Universe"로 결합하는 패턴입니다:
 
 ```python
-python -c "import newton; print(f'Newton Version: {newton.__version__}'); import isaacsim; print('Isaac Sim 6.0 로드 성공')"
+import newton
+from newton.solvers import SolverMuJoCo, SolverVBD
+
+# Universe A: MuJoCo rigid-body 로봇
+robot_model = robot_builder.finalize()
+mj_solver = SolverMuJoCo(
+    robot_model,
+    solver="newton",
+    integrator="implicitfast",
+    cone="elliptic",
+    iterations=20,
+)
+
+# Universe B: VBD 케이블 deformable
+cable_builder = newton.ModelBuilder()
+cable_builder.add_rod(
+    positions=cable_points,
+    quaternions=cable_quats,
+    radius=0.003,                # 케이블 반경 [m]
+    stretch_stiffness=1e12,      # EA [N]
+    bend_stiffness=3.0,          # EI [N·m²]
+    stretch_damping=1e-3,
+    bend_damping=1.0,
+)
 ```
 
-### 💡 팩트 체크 및 주의사항
+### 4단계 — Franka + Cloth 데모 바로 실행 (가장 빠른 확인법)
 
-  * **GitHub 저장소:** `newton-physics/newton`은 Linux Foundation 프로젝트로 전환되었으며, NVIDIA, Google DeepMind, Disney Research가 공동 관리하는 **1.0 GA 공식 저장소**가 맞습니다.
-  * **1.0 GA의 핵심:** 이번 버전부터 **Kamino 솔버**(복잡한 관절체용)와 **VBD**(케이블/천 등 유연체용)가 정식 통합되었습니다.
-  * **Isaac Sim 6.0 상태:** 현재 6.0은 초기 개발자 릴리스(Early Release) 단계이므로, 일부 GUI 기능이 불안정할 수 있습니다. 이 경우 Newton 백엔드를 사용하는 \*\*Python 스크립트 방식(`backend="newton"`)\*\*으로 구동하는 것이 가장 확실합니다.
+Newton 리포에는 Franka 로봇 팔이 천을 조작하는 데모가 포함되어 있으며, RTX 4090 기준 약 30 FPS로 실행됩니다. GPU-IPC 대비 300배 이상 빠릅니다:
 
------
+```bash
+git clone https://github.com/newton-physics/newton.git
+cd newton
+# Franka + cloth 데모 실행
+python examples/franka_cloth.py
+```
 
-이제 설치가 완벽하게 끝났을 것입니다. **설치된 Newton 1.0의 신기능인 'Kamino 솔버'를 사용해 복잡한 병렬 링크 로봇을 구동하는 예제 코드를 바로 확인해 보시겠습니까?**
+---
 
-[Newton Physics Engine Overview](https://www.google.com/search?q=https://www.youtube.com/watch%3Fv%3DS0TscL6Y1zM)
-이 영상은 GTC 2026에서 발표된 Newton 1.0 GA의 주요 기능과 MuJoCo 대비 성능 향상 수치, 그리고 실제 산업용 로봇 조작에 적용된 사례를 상세히 보여주어 기술적 이해에 큰 도움이 됩니다.
+## ⚠️ 현실적 주의사항
+
+Isaac Sim 6.0은 현재 Early Access로, 여러 physics backend 지원과 성능 개선, 로봇 리깅 워크플로우를 확장 중입니다. 즉 아직 소스 빌드만 가능하고 API 변경이 있을 수 있습니다. **Newton standalone repo**(`newton-physics/newton`)는 Isaac Sim 없이도 VBD deformable을 바로 테스트할 수 있어서, 먼저 standalone으로 검증 후 Isaac Sim 6.0으로 이전하는 것을 추천합니다.
