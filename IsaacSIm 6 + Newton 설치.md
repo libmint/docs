@@ -245,3 +245,30 @@ ${ISAACSIM_PYTHON_EXE} -m pip install newton mujoco-warp
 ```
 
 빌드하다가 에러 메시지 뜨면 그대로 붙여넣어 주세요, 같이 해결해 드릴게요!
+
+
+정확히 확인해 드릴게요:
+
+```bash
+# 1. 실제로 막혀있는지 확인
+curl -v --max-time 10 https://ovextensionsprod.blob.core.windows.net 2>&1 | tail -20
+
+# 2. 프록시 경유인지 확인
+curl -v --max-time 10 https://ovextensionsprod.blob.core.windows.net 2>&1 | grep -i "proxy\|tunnel\|407\|403\|timeout\|refused"
+
+# 3. 현재 프록시 설정 확인
+echo $http_proxy
+echo $https_proxy
+env | grep -i proxy
+```
+
+결과에 따라 IT팀에 요청할 내용이 달라집니다:
+
+| 결과 | 의미 | IT 요청 내용 |
+|---|---|---|
+| `Connection timed out` | 방화벽 차단 | 해당 도메인 방화벽 허용 요청 |
+| `407 Proxy Auth` | 프록시 인증 필요 | 프록시 계정/설정 요청 |
+| `403 Forbidden` | 접근 차단 정책 | URL 화이트리스트 추가 요청 |
+| `Could not resolve host` | DNS 차단 | DNS 허용 요청 |
+
+결과 붙여넣어 주시면 IT팀에 **정확히 어떤 도메인을 어떤 방식으로 허용해달라고** 요청해야 하는지 문구까지 만들어 드릴게요!
