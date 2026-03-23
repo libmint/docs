@@ -1,6 +1,6 @@
 ---
 layout: default
-title: IsaacSIm 6 설치
+title: IsaacSIm 6 + Newton 설치
 parent: 나의 공부 게시판
 ---
 
